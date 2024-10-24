@@ -1,4 +1,5 @@
 #include "HttpUtility.h"
+#include "LocalUtility.h"
 
 #include <mutex>
 
@@ -94,7 +95,7 @@ public:
             iter != http_headers.end(); iter++)
         {
             std::string header = iter->first + ": " + iter->second;
-            printf("\t%s", header.c_str());
+            LOGd1("\t%s", header.c_str());
             headers = curl_slist_append(headers, header.c_str());
         }
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
@@ -152,7 +153,7 @@ public:
         formpost = lastptr = nullptr;
         if (res != CURLE_OK)
         {
-            printf("curl_easy_perform() failed, %d: %s", res, curl_easy_strerror(res));
+            LOGx2("curl_easy_perform() failed, %d: %s", res, curl_easy_strerror(res));
             if (res == CURLE_COULDNT_RESOLVE_HOST ||
                 res == CURLE_COULDNT_CONNECT)
                 return HTTP_NETWORK_ERROR;
@@ -163,7 +164,7 @@ public:
                 res = curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
                 if ((CURLE_OK == res) && response_code)
                 {
-                    printf("http request return code %d", response_code);
+                    LOGd1("http request return code %d", response_code);
                     if (response_code >= 500)
                         return HTTP_SERVER_ERROR;
                     else if (response_code >= 400)
@@ -184,7 +185,7 @@ public:
             res = curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
             if ((CURLE_OK == res) && response_code)
             {
-                printf("curl_easy_perform() success, http request return code %d", response_code);
+                LOGd1("curl_easy_perform() success, http request return code %d", response_code);
                 if (response_code == 302)
                     return HTTP_REPORT_SERVICE_RETRY;
             }
@@ -346,4 +347,12 @@ void HttpClient::SetMultiPartBuffer(std::string key, const char *buffer, size_t 
 
 void HttpClient::SetMultiPartOptions(const char* url, std::map<std::string, std::string>& http_headers, unsigned int timeout){
     impl->SetMultiPartOptions(url, http_headers, timeout);
+}
+
+bool HttpClient::connect() {
+    return Initialize();
+}
+
+bool HttpClient::disconnect() {
+    return Finalize();
 }

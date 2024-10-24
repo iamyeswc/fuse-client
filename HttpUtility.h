@@ -4,6 +4,8 @@
 #include <string>
 #include <map>
 #include <curl/curl.h>
+#include "./Util/Connection.h"
+#include "./Util/ConnectionFactory.h"
 
 class HttpClientImpl;
 
@@ -30,7 +32,7 @@ enum HTTP_ERROR_CODE
 bool HTTPS_GLOBAL_INITIALIZE();
 bool HTTPS_GLOBAL_FINALIZE();
 
-class HttpClient
+class HttpClient : public ngmp::common::Connection
 {
 public:
     HttpClient(bool verify_peer, bool verify_host);
@@ -64,9 +66,36 @@ public:
         }
     }
 
+private:
+    virtual bool connect() override;
+
+    virtual bool disconnect() override;
 
 private:
     HttpClientImpl* impl;
 };
 
-#endif //_HTTPSUTILITY_INCLUDED_
+class CurlFactory : public ngmp::common::ConnectionFactory
+{
+public:
+    virtual std::shared_ptr<ngmp::common::Connection> create_connection() override
+    {
+        std::shared_ptr<ngmp::common::Connection> connection(new HttpClient(false, false),
+            [](ngmp::common::Connection *connection)
+            {
+                if (connection)
+                {
+                    connection->disconnect();
+                }
+                delete connection;
+            }
+        );
+        if (connection)
+        {
+            connection->connect();
+        }
+        return connection;
+    }
+};
+
+#endif
