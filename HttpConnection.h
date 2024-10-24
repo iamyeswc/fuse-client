@@ -7,7 +7,7 @@
 #include "./Util/Connection.h"
 #include "./Util/ConnectionFactory.h"
 
-class HttpClientImpl;
+class HttpConnectionImpl;
 
 enum HTTP_REQUEST_METHOD
 {
@@ -32,11 +32,11 @@ enum HTTP_ERROR_CODE
 bool HTTPS_GLOBAL_INITIALIZE();
 bool HTTPS_GLOBAL_FINALIZE();
 
-class HttpClient : public ngmp::common::Connection
+class HttpConnection : public ngmp::common::Connection
 {
 public:
-    HttpClient(bool verify_peer, bool verify_host);
-    virtual ~HttpClient();
+    HttpConnection(bool verify_peer, bool verify_host);
+    virtual ~HttpConnection();
 
     virtual bool Initialize();
     virtual bool Finalize();
@@ -72,7 +72,7 @@ private:
     virtual bool disconnect() override;
 
 private:
-    HttpClientImpl* impl;
+    HttpConnectionImpl* impl;
 };
 
 class CurlFactory : public ngmp::common::ConnectionFactory
@@ -80,7 +80,7 @@ class CurlFactory : public ngmp::common::ConnectionFactory
 public:
     virtual std::shared_ptr<ngmp::common::Connection> create_connection() override
     {
-        std::shared_ptr<ngmp::common::Connection> connection(new HttpClient(false, false),
+        std::shared_ptr<ngmp::common::Connection> connection(new HttpConnection(false, false),
             [](ngmp::common::Connection *connection)
             {
                 if (connection)

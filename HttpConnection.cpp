@@ -1,13 +1,13 @@
-#include "HttpUtility.h"
+#include "HttpConnection.h"
 #include "LocalUtility.h"
 
 #include <mutex>
 
 
-class HttpClientImpl
+class HttpConnectionImpl
 {
 public:
-    HttpClientImpl(bool verify_peer, bool verify_host) : curl(0), headers(NULL), response_body(),
+    HttpConnectionImpl(bool verify_peer, bool verify_host) : curl(0), headers(NULL), response_body(),
         ssl_verify_peer(verify_peer), ssl_verify_host(verify_host)
     {
     }
@@ -67,7 +67,7 @@ public:
         std::map<std::string, std::string>& http_headers, unsigned int timeout)
     {
 #undef  __FUNC__
-#define __FUNC__ "HttpClientImpl::SetOptions"
+#define __FUNC__ "HttpConnectionImpl::SetOptions"
 
         //Disable proxy, if need proxy, set in another function
         curl_easy_setopt(curl, CURLOPT_PROXY, "");
@@ -143,7 +143,7 @@ public:
     HTTP_ERROR_CODE SendRequest(long &response_code)
     {
 #undef  __FUNC__
-#define __FUNC__ "HttpClientImpl::SendRequest"
+#define __FUNC__ "HttpConnectionImpl::SendRequest"
         response_code = 0;
 
         CURLcode res = curl_easy_perform(curl);
@@ -276,83 +276,83 @@ private:
 
 bool HTTPS_GLOBAL_INITIALIZE()
 {
-    return HttpClientImpl::HTTPS_GLOBAL_INITIALIZE();
+    return HttpConnectionImpl::HTTPS_GLOBAL_INITIALIZE();
 }
 
 bool HTTPS_GLOBAL_FINALIZE()
 {
-    HttpClientImpl::HTTPS_GLOBAL_FINALIZE();
+    HttpConnectionImpl::HTTPS_GLOBAL_FINALIZE();
     return true;
 }
 
-HttpClient::HttpClient(bool verify_peer, bool verify_host)
+HttpConnection::HttpConnection(bool verify_peer, bool verify_host)
 {
-    impl = new HttpClientImpl(verify_peer, verify_host);
+    impl = new HttpConnectionImpl(verify_peer, verify_host);
 }
 
-HttpClient::~HttpClient()
+HttpConnection::~HttpConnection()
 {
     delete impl;
 }
 
 
-bool HttpClient::Initialize()
+bool HttpConnection::Initialize()
 {
     return impl->Initialize();
 }
 
-bool HttpClient::Finalize()
+bool HttpConnection::Finalize()
 {
     return impl->Finalize();
 }
 
-void  HttpClient::SetHttpProxy(const char* proxy, int port, const char* uid, const char* pwd)
+void  HttpConnection::SetHttpProxy(const char* proxy, int port, const char* uid, const char* pwd)
 {
     impl->SetProxy(proxy, port, uid, pwd);
 }
 
-void HttpClient::SetOptions(const char* url, HTTP_REQUEST_METHOD method,
+void HttpConnection::SetOptions(const char* url, HTTP_REQUEST_METHOD method,
     std::map<std::string, std::string>& http_headers, unsigned int timeout)
 {
     impl->SetOptions(url, method, http_headers, timeout);
 }
 
-void HttpClient::PreparePostData(const char* data, unsigned int size)
+void HttpConnection::PreparePostData(const char* data, unsigned int size)
 {
     impl->PreparePostData(data, size);
 }
 
-std::string HttpClient::Escape(const char* input, unsigned int size)
+std::string HttpConnection::Escape(const char* input, unsigned int size)
 {
     return impl->Escape(input, size);
 }
 
-HTTP_ERROR_CODE HttpClient::SendRequest(long &resp_code)
+HTTP_ERROR_CODE HttpConnection::SendRequest(long &resp_code)
 {
     return impl->SendRequest(resp_code);
 }
 
-char* HttpClient::GetResponseBody()
+char* HttpConnection::GetResponseBody()
 {
     return impl->GetResponseBody();
 }
 
-void HttpClient::SetMultiPartFile(std::string key, std::string &path){
+void HttpConnection::SetMultiPartFile(std::string key, std::string &path){
     impl->SetMultiPartFile(key, path);
 }
 
-void HttpClient::SetMultiPartBuffer(std::string key, const char *buffer, size_t size, const std::string &name){
+void HttpConnection::SetMultiPartBuffer(std::string key, const char *buffer, size_t size, const std::string &name){
     impl->SetMultiPartBuffer(key,buffer,size,name);
 }
 
-void HttpClient::SetMultiPartOptions(const char* url, std::map<std::string, std::string>& http_headers, unsigned int timeout){
+void HttpConnection::SetMultiPartOptions(const char* url, std::map<std::string, std::string>& http_headers, unsigned int timeout){
     impl->SetMultiPartOptions(url, http_headers, timeout);
 }
 
-bool HttpClient::connect() {
+bool HttpConnection::connect() {
     return Initialize();
 }
 
-bool HttpClient::disconnect() {
+bool HttpConnection::disconnect() {
     return Finalize();
 }

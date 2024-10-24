@@ -8,59 +8,16 @@ const std::string FuseHttpClient::albTraceIdName = "X-Amzn-Trace-Id";
 const std::string FuseHttpClient::contentType = "Content-Type";
 const std::string FuseHttpClient::multiPartFormData = "multipart/form-data";
 const std::string FuseHttpClient::jsonData = "application/json";
-const unsigned int FuseHttpClient::max_fuse_slide_window = 600;
 
-FuseHttpClient::FuseHttpClient(const std::string &host, unsigned int port) :
-    m_host(host),
-    m_port(port),
-    m_in_fuse_mode(false),
-    m_inplace_retry_times(0),
-    m_timeout(0),
-    m_coefficient(1),
-    m_latency_timeout(std::numeric_limits<unsigned int>::max())
+FuseHttpClient::FuseHttpClient(const std::string &host, unsigned int port)
+    : FuseClient(host, port)
 {
 }
 
 FuseHttpClient::~FuseHttpClient()
 {
-    if (m_recovery_thread.joinable())
-    {
-        m_in_fuse_mode = false;
-        m_recovery_thread.join();
-    }
 }
 
-void FuseHttpClient::set_fuse(unsigned int silde_window,
-                              unsigned int threshold,
-                              unsigned int recovery_interval,
-                              unsigned int recovery_threshold)
-{
-#undef __FUNC__
-#define __FUNC__ "FuseHttpClient::set_fuse"
-
-    if (silde_window == 0)
-    {
-        m_timer_counter.reset();
-        LOGi1("Disable fuse mode for FuseHttpClient %s since the slide window is zero", destination().c_str());
-        return;
-    }
-
-    if (silde_window > max_fuse_slide_window)
-    {
-        silde_window = max_fuse_slide_window;
-        LOGi1("Max fuse slide window in second is %u", max_fuse_slide_window);
-    }
-
-    m_timer_counter.reset(new TimerCounter(1, silde_window));
-
-    m_fuse_slide_window = silde_window;
-    m_fuse_threshold = threshold;
-    m_fuse_recovery_interval = recovery_interval;
-    m_fuse_recovery_threshold = recovery_threshold;
-
-    LOGd4("Fuse mode: slide_window[%u], threshold[%u], recovery_interval[%u], recovery_threshold[%u]",
-          m_fuse_slide_window, m_fuse_threshold, m_fuse_recovery_interval, m_fuse_recovery_threshold);
-}
 
 long FuseHttpClient::do_request(const std::string &path,
                                 HTTP_REQUEST_METHOD method,
@@ -68,8 +25,6 @@ long FuseHttpClient::do_request(const std::string &path,
                                 const Body &data,
                                 std::string &response)
 {
-#undef __FUNC__
-#define __FUNC__ "FuseHttpClient::do_request"
 
     //traceId
     std::string traceId;
@@ -125,7 +80,7 @@ long FuseHttpClient::do_request(const std::string &path,
 
         //do request
         const std::string URI = "http://" + destination() + path;
-        data.prepare(client, traceId, URI, method, m_timeout.load() * m_coefficient, headers);
+        data.prepare(client, traceId, URI, method, m_timeout.load(), headers);
 
         LOGd3("%s Do request: %s %s", traceId.c_str(), HttpClient::methodName(method).c_str(), URI.c_str());
         for (const std::pair<const std::string, const std::string> &header : headers)
@@ -235,47 +190,4 @@ void FuseHttpClient::MultiPartBody::prepare(const std::shared_ptr<HttpClient> &c
         client->SetMultiPartBuffer(key, (const char*)in.data(), in.size(), name);
     }
     client->SetMultiPartOptions(URI.c_str(), headers, timeout);
-}
-
-void FuseHttpClient::recovery_func()
-{
-#undef __FUNC__
-#define __FUNC__ "FuseHttpClient::recovery_func"
-
-    std::chrono::steady_clock::time_point next = std::chrono::steady_clock::now() + std::chrono::seconds(m_fuse_recovery_interval);
-
-    unsigned int recovery_count = 0;
-    while (m_in_fuse_mode)
-    {
-        std::this_thread::sleep_for(std::chrono::seconds(1));
-        if (std::chrono::steady_clock::now() < next)
-        {
-            continue;
-        }
-
-        LOGd1("%s in fuse mode, try a test", destination().c_str());
-        if (test())
-        {
-            ++recovery_count;
-            LOGi2("%s %u times successful test", destination().c_str(), recovery_count);
-            if (recovery_count >= m_fuse_recovery_threshold)
-            {
-                LOGi2("%s equal the threshold %u, leave fuse mode", destination().c_str(), m_fuse_recovery_threshold);
-                if (m_timer_counter)
-                {
-                    m_timer_counter->reset();
-                }
-                m_in_fuse_mode = false;
-            }
-        }
-        else
-        {
-            LOGx1("%s test failed", destination().c_str());
-            recovery_count = 0;
-        }
-
-        next = std::chrono::steady_clock::now() + std::chrono::seconds(m_fuse_recovery_interval);
-    }
-
-    m_recovery_triggered->store(false);
 }

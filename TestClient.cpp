@@ -2,7 +2,7 @@
 
 #include <memory>
 
-#include "HttpUtility.h"
+#include "HttpConnection.h"
 #include "rapidjson/document.h"
 #include "rapidjson/writer.h"
 #include "rapidjson/stringbuffer.h"
