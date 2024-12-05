@@ -1,10 +1,9 @@
-#ifndef _HTTPSUTILITY_INCLUDED_
-#define _HTTPSUTILITY_INCLUDED_
+#ifndef _HTTPCONNECTION_H_
+#define _HTTPCONNECTION_H_
 
 #include <string>
 #include <map>
 #include <curl/curl.h>
-#include "./Util/Connection.h"
 #include "./Util/ConnectionFactory.h"
 
 class HttpConnectionImpl;
@@ -75,27 +74,5 @@ private:
     HttpConnectionImpl* impl;
 };
 
-class CurlFactory : public ngmp::common::ConnectionFactory
-{
-public:
-    virtual std::shared_ptr<ngmp::common::Connection> create_connection() override
-    {
-        std::shared_ptr<ngmp::common::Connection> connection(new HttpConnection(false, false),
-            [](ngmp::common::Connection *connection)
-            {
-                if (connection)
-                {
-                    connection->disconnect();
-                }
-                delete connection;
-            }
-        );
-        if (connection)
-        {
-            connection->connect();
-        }
-        return connection;
-    }
-};
 
 #endif
